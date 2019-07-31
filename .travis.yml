@@ -7,5 +7,6 @@ services:
 
 before_script: pip install docker-compose
 
+# when pushes code it runs tests with flake8 (pep8 linting tool)
 script:
   - docker-compose run app sh -c "python manage.py test && flake8"
