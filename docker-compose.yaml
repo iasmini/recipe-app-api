@@ -2,6 +2,7 @@ version: "3"
 
 # app - nome do servico
 # ports - maps port 8000 from host to 8000 from image
+# command - comando para executar a aplicação (0.0.0.0 - disponível para todos os ips do container)
 services:
   app:
     build:
