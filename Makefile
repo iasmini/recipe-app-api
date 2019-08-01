@@ -16,7 +16,9 @@ migrations:
 ps:
 	docker-compose ps
 
-run: docker-compose up -d
+# -d: detached mode - run containers in the background
+run:
+	docker-compose up -d
 
 restart:
 	docker-compose stop
