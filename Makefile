@@ -26,4 +26,7 @@ stop:
 	docker-compose stop
 
 test:
+	docker-compose run app python manage.py test
+
+test_flake:
 	docker-compose run app sh -c "python manage.py test && flake8"
