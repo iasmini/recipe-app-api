@@ -24,6 +24,9 @@ restart:
 	docker-compose stop
 	docker-compose up -d
 
+sh:
+	docker-compose run app sh
+
 stop:
 	docker-compose stop
 
@@ -32,3 +35,4 @@ test:
 
 test_flake:
 	docker-compose run app sh -c "python manage.py test && flake8"
+
