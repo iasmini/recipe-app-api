@@ -7,6 +7,7 @@ from rest_framework import status
 
 CREATE_USER_URL = reverse('user:create')
 TOKEN_URL = reverse('user:token')
+ME_URL = reverse('user:me')
 
 
 # helper function to create user
@@ -113,3 +114,64 @@ class PublicUserApiTests(TestCase):
         # checks that there is not a key called token in the response
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_user_unauthorized(self):
+        """Test that authentication is required for users"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PublicUserApiTests(TestCase):
+    """Test API requests that require authentications"""
+
+    def setUp(self):
+        # it simplifies to call our user in our test to not have to create it
+        # manually in every single test we run
+        self.user = create_user(
+            email='test@test.com',
+            password='123',
+            name='test name'
+        )
+
+        # it simplifies to call our client in our test to not have to create it
+        # manually in every single test we run
+        self.client = APIClient()
+        # already authenticates with the created user
+        self.client.force_authenticate(user=self.user)
+
+    def test_retrieve_profile_success(self):
+        """Test retrieving profile for logged in user"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, {
+            'name': self.user.name,
+            'email': self.user.email
+        })
+
+    def test_post_not_allowed(self):
+        """Test that POST is not allowed on the me url"""
+        res = self.client.post(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_update_user_profile(self):
+        """Test updating the user profile for authenticated user"""
+        # it has to be different that default user created in setup
+        payload = {
+            'email': 'test2@test.com',
+            'password': '1234',
+            'name': 'test2 name'
+        }
+        res = self.client.patch(ME_URL, payload)
+
+        # we use the refresh from db helper function to update the user with
+        # the latest values from the database
+        self.user.refresh_from_db()
+
+        # verify that each of the the values we provided was updated
+        self.assertEqual(self.user.name, payload['name'])
+        self.assertTrue(self.user.check_password(payload['password']))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
