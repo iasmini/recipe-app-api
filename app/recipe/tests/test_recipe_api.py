@@ -160,3 +160,47 @@ class PrivateRecipeAPITessts(TestCase):
         self.assertEqual(ingredients.count(), 2)
         self.assertIn(ingredient1, ingredients)
         self.assertIn(ingredient2, ingredients)
+
+    def test_partial_update_recipe(self):
+        """Test updating a recipe with patch"""
+        recipe = sample_recipe(user=self.user)
+        recipe.tags.add(sample_tag(user=self.user))
+        new_tag = sample_tag(user=self.user, name='Curry')
+
+        payload = {
+            'title': 'Chiken tikka',
+            'tags': [new_tag.id]
+        }
+        url = detail_url(recipe.id)
+        # patch - só atualiza no banco os campos passados no payload
+        self.client.patch(url, payload)
+
+        # refreshes the details in recipe from the database
+        recipe.refresh_from_db()
+        self.assertEqual(recipe.title, payload['title'])
+        tags = recipe.tags.all()
+        self.assertEqual(len(tags), 1)
+        self.assertIn(new_tag, tags)
+
+    def full_update_recipe(self):
+        """Test updating a recipe with put"""
+        recipe = sample_recipe(user=self.user)
+        recipe.tags.add(sample_tag(user=self.user))
+        payload = {
+            'title': 'Spaghetti carbonara',
+            'time_minutes': 25,
+            'cost': 6.00
+        }
+        url = detail_url(recipe.id)
+        # patch - atualiza no banco todos os campos do registro
+        # se nao passar no payload será considerado como nulo
+        self.client.put(url, payload)
+
+        recipe.refresh_from_db()
+        self.assertEqual(recipe.title, payload['title'])
+        self.assertEqual(recipe.time_minutes, payload['time_minutes'])
+        self.assertEqual(recipe.cost, payload['cost'])
+        tags = recipe.tags.all()
+        # apesar de termos criado a tag, ela nao foi passada no payload
+        # por isso, não será atualizada no banco
+        self.assertEqual(len(tags), 0)
