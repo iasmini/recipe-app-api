@@ -1,3 +1,8 @@
+import os
+import tempfile
+
+from PIL import Image
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -11,6 +16,11 @@ from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 # app:identifier for the url in the app
 RECIPES_URL = reverse('recipe:recipe-list')
+
+
+def image_upload_url(recipe_id):
+    """Return URL for recipe image upload"""
+    return reverse('recipe:recipe-upload-image', args=[recipe_id])
 
 
 # /api/recipe/recipes/1/
@@ -204,3 +214,50 @@ class PrivateRecipeAPITessts(TestCase):
         # apesar de termos criado a tag, ela nao foi passada no payload
         # por isso, não será atualizada no banco
         self.assertEqual(len(tags), 0)
+
+
+# added a new test class because there's going to be some common functionality
+# for the image upload test. We're going to want to repeat.
+# And I think it's a good idea to keep us separate from this so we'll type
+# class recipe image.
+class RecipeImageUploadTests(TestCase):
+    """Test image recipe uploading API"""
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            'test@test.com.br',
+            '123'
+        )
+        self.client.force_authenticate(self.user)
+        self.recipe = sample_recipe(user=self.user)
+
+    # executa essa funcao no fim dos testes
+    def tearDown(self):
+        # removes all of the test files that we create
+        self.recipe.image.delete()
+
+    def test_upload_image_to_recipe(self):
+        """Test uploading an email to recipe"""
+        url = image_upload_url(self.recipe.id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as ntf:
+            # cria um quadrado como uma imagem para poder fazer o upload
+            img = Image.new('RGB', (10, 10))
+            img.save(ntf, format('JPEG'))
+            # volta para o inicio do arquivo pq apos salvar estah no fim
+            ntf.seek(0)
+            # multipart - multipart form request which means a form that
+            # consists of data. By default it would just be a form that
+            # consists of a Json object and we actually want to post data
+            res = self.client.post(url, {'image': ntf}, format='multipart')
+
+        self.recipe.refresh_from_db()
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.recipe.image.path))
+
+    def test_upload_image_bad_request(self):
+        """Test uploading an invalid image"""
+        url = image_upload_url(self.recipe.id)
+        res = self.client.post(url, {'image': 'not_image'}, format='multipart')
+
+        self.assertTrue(res.status_code, status.HTTP_400_BAD_REQUEST)
