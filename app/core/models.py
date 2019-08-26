@@ -1,7 +1,18 @@
+import uuid
+import os
+
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
     PermissionsMixin
 from django.conf import settings
+
+
+def recipe_image_file_path(instance, filename):
+    """Generate file path for new recipe image"""
+    extension = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{extension}'
+
+    return os.path.join('uploads/recipe/', filename)
 
 
 # class UserManager - provides the helper function for creating a user or
@@ -90,6 +101,12 @@ class Recipe(models.Model):
     )
     ingredients = models.ManyToManyField('Ingredient')
     tags = models.ManyToManyField('Tag')
+    # we don't want to add the two brackets at the end of
+    # recipe_image_file_path because we don't want to call the function.
+    # We just want to pass a reference to the function.
+    # So can we call it every time we upload and it gets called in the
+    # background by Django by the image field feature.
+    image = models.ImageField(null=True, upload_to=recipe_image_file_path)
 
     def __str__(self):
         return self.title
