@@ -17,7 +17,18 @@ class BaseRecipeAttrViewSet(viewsets.GenericViewSet,
 
     def get_queryset(self):
         """Return objects for the current authenticated user only"""
-        return self.queryset.filter(user=self.request.user).order_by('-name')
+        # 'assigned_only', 0: o zero significa que se o assigned_only for None
+        # retorna zero (valor default para None)
+        assigned_only = bool(
+            int(self.request.query_params.get('assigned_only', 0))
+        )
+        queryset = self.queryset
+        if assigned_only:
+            # filtra somente receitas com tags ou ingredientes
+            queryset = queryset.filter(recipe__isnull=False)
+
+        return queryset.filter(
+            user=self.request.user).order_by('-name').distinct()
 
     def perform_create(self, serializer):
         """Create a new base recipe attribute"""
